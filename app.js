@@ -27,7 +27,12 @@ function browserStub() {
 
 async function main() {
   const hideSplash = () => document.getElementById('splash')?.classList.add('hide');
-  if (!inTelegram && !isDemo) return (browserStub(), hideSplash());
+  if (!inTelegram && !isDemo) {
+    browserStub();
+    hideSplash();
+    window.__bjReady = true;
+    return;
+  }
   setupApp();
   document.documentElement.classList.toggle('demo', isDemo);
   bindNativeButtons();
@@ -36,11 +41,11 @@ async function main() {
   store.subscribe(() => refresh());
   initRouter();
   hideSplash();
+  window.__bjReady = true;
   if (inTelegram && !adapter) toast(t('browser.old'), 'long');
 }
 
 main().catch((e) => {
   console.error(e);
-  document.getElementById('splash')?.classList.add('hide');
-  document.getElementById('app').innerHTML = `<div class="stub"><h1>Ошибка запуска</h1><p class="muted">${esc(e.message)}</p></div>`;
+  if (window.__bjShowError) window.__bjShowError(e.message);
 });

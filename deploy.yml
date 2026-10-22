@@ -28,10 +28,12 @@ jobs:
           node-version: 22
       - name: Тесты
         run: npm test
+      - name: Сборка
+        run: node build.mjs
       - name: Собрать папку сайта
         run: |
           mkdir _site
-          cp -r index.html icon.svg css js _site/
+          cp -r index.html app.bundle.js icon.svg css _site/
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

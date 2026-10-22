@@ -6,10 +6,11 @@ const STORE = 'photos';
 function openDB() {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') return reject(new Error('no indexedDB'));
+    const timer = setTimeout(() => reject(new Error('indexedDB timeout')), 2500);
     const req = indexedDB.open(DB_NAME, 1);
+    req.onsuccess = () => (clearTimeout(timer), resolve(req.result));
+    req.onerror = () => (clearTimeout(timer), reject(req.error));
     req.onupgradeneeded = () => req.result.createObjectStore(STORE);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
   });
 }
 

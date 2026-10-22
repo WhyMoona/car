@@ -6,7 +6,7 @@ const params = new URLSearchParams(location.search);
 
 export const inTelegram = !!(W && (W.initData || (W.platform && W.platform !== 'unknown')));
 // Демо-режим: localhost или ?demo — интерфейс без Telegram, данные только в этом браузере
-export const isDemo = !inTelegram && (['localhost', '127.0.0.1'].includes(location.hostname) || params.has('demo'));
+export const isDemo = !inTelegram && (location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname) || params.has('demo'));
 
 const atLeast = (v) => !!(W && W.isVersionAtLeast && W.isVersionAtLeast(v));
 const safe = (fn) => { try { return fn(); } catch (e) { console.warn(e); return undefined; } };

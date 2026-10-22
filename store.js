@@ -65,7 +65,7 @@ export async function init(cloudAdapter, h = {}) {
   }
   // Первый запуск на этом устройстве — ждём облако, чтобы не показать пустой экран владельцу данных
   if (adapter) {
-    await Promise.race([pull(false), new Promise((r) => setTimeout(r, 8000))]);
+    await Promise.race([pull(false), new Promise((r) => setTimeout(r, 6000))]);
   }
 }
 
