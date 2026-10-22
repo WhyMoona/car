@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#f2f4f7">
+  <meta name="format-detection" content="telephone=no">
+  <title>Бортжурнал</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.css?v=4d5a5612">
+  <script>
+    // Сторож запуска: если приложение не стартовало, вместо вечной заставки показываем причину
+    (function () {
+      var errors = [];
+      window.addEventListener('error', function (e) {
+        var t = e.target;
+        if (t && t !== window && (t.src || t.href)) {
+          var name = String(t.src || t.href).split('?')[0].split('/').slice(-2).join('/');
+          if (name.indexOf('telegram-web-app') < 0) errors.push('Не загрузился файл ' + name);
+        } else if (e.message) errors.push(e.message);
+      }, true);
+      window.__bjShowError = function (extra) {
+        if (window.__bjReady) return;
+        window.__bjReady = true;
+        var s = document.getElementById('splash');
+        if (s) s.className = 'hide';
+        var msg = extra ? [extra] : errors.slice(0, 3);
+        var hint = !msg.length
+          ? 'Приложение долго не отвечает. Проверьте интернет и откройте его ещё раз.'
+          : 'Проверьте, что в репозиторий загружены все файлы: index.html, app.bundle.js, icon.svg и папка css.';
+        var esc = function (x) { return String(x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+        document.getElementById('app').innerHTML = '<div class="stub"><img src="icon.svg" alt="" width="72" height="72">' +
+          '<h1>Не получилось запустить</h1><p>' + esc(hint) + '</p>' +
+          (msg.length ? '<p class="muted small">' + msg.map(esc).join('<br>') + '</p>' : '') +
+          '<button class="btn primary" onclick="location.reload()">Обновить</button></div>';
+      };
+      setTimeout(function () { window.__bjShowError(); }, 15000);
+    })();
+  </script>
+  <script src="app.bundle.js?v=4d5a5612" defer onerror="__bjShowError('Не найден файл app.bundle.js')"></script>
+</head>
+<body>
+  <div id="app"><main id="view"></main></div>
+  <nav id="tabbar" hidden></nav>
+  <div id="overlay"></div>
+  <div id="toasts"></div>
+  <!-- Заменители кнопок Telegram для проверки в обычном браузере -->
+  <button id="mock-back" type="button" hidden>‹ Назад</button>
+  <button id="mock-main" type="button" hidden></button>
+  <div id="splash"><img src="icon.svg" alt="" width="72" height="72"></div>
+</body>
+</html>

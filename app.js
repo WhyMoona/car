@@ -1,6 +1,6 @@
 // Точка входа
 import { setLang, t } from './i18n.js';
-import { inTelegram, isDemo, setupApp, cloudAdapter, bindNativeButtons } from './tg.js';
+import { env, initTelegram, setupApp, cloudAdapter, bindNativeButtons } from './tg.js';
 import * as store from './core/store.js';
 import { initRouter, refresh } from './ui/router.js';
 import { toast } from './ui/kit.js';
@@ -27,6 +27,8 @@ function browserStub() {
 
 async function main() {
   const hideSplash = () => document.getElementById('splash')?.classList.add('hide');
+  await initTelegram();
+  const { inTelegram, isDemo } = env;
   if (!inTelegram && !isDemo) {
     browserStub();
     hideSplash();

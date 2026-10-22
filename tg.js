@@ -1,12 +1,27 @@
 // Обёртка над Telegram.WebApp с запасным режимом для отладки в браузере.
 import { memoryAdapter, telegramAdapter } from './core/cloud.js';
+import { hasLaunchParams, loadOfficialSDK, installBridge } from './tgbridge.js';
 
-const W = window.Telegram?.WebApp;
+let W = null;
 const params = new URLSearchParams(location.search);
 
-export const inTelegram = !!(W && (W.initData || (W.platform && W.platform !== 'unknown')));
-// Демо-режим: localhost или ?demo — интерфейс без Telegram, данные только в этом браузере
-export const isDemo = !inTelegram && (location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname) || params.has('demo'));
+// inTelegram — открыто внутри Telegram; isDemo — проверка в обычном браузере (localhost, файл с диска, ?demo);
+// bridge — официальный скрипт telegram.org не загрузился, работаем через встроенную связь
+export const env = { inTelegram: false, isDemo: false, bridge: false };
+
+export async function initTelegram() {
+  if (window.Telegram?.WebApp?.initData) {
+    W = window.Telegram.WebApp;
+  } else if (hasLaunchParams()) {
+    const ok = await loadOfficialSDK(4000);
+    W = ok && window.Telegram?.WebApp ? window.Telegram.WebApp : installBridge();
+    env.bridge = !!W.isBridge;
+  }
+  env.inTelegram = !!(W && (W.initData || (W.platform && W.platform !== 'unknown')));
+  const local = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname) || params.has('demo');
+  env.isDemo = !env.inTelegram && local;
+  return env;
+}
 
 const atLeast = (v) => !!(W && W.isVersionAtLeast && W.isVersionAtLeast(v));
 const safe = (fn) => { try { return fn(); } catch (e) { console.warn(e); return undefined; } };
@@ -14,7 +29,7 @@ const safe = (fn) => { try { return fn(); } catch (e) { console.warn(e); return 
 export const COLORS = { bg: '#f2f4f7', surface: '#ffffff', accent: '#1479c9' };
 
 export function setupApp() {
-  if (!inTelegram) return;
+  if (!env.inTelegram) return;
   safe(() => W.ready());
   safe(() => W.expand());
   if (atLeast('6.1')) {
@@ -28,11 +43,11 @@ export function setupApp() {
 }
 
 export function cloudAdapter() {
-  if (inTelegram) {
+  if (env.inTelegram) {
     if (W.CloudStorage && atLeast('6.9')) return telegramAdapter(W.CloudStorage);
     return null;
   }
-  if (isDemo) {
+  if (env.isDemo) {
     // имитация CloudStorage в localStorage браузера
     const KEY = 'bortjournal.demoCloud';
     let init = {};
@@ -48,11 +63,11 @@ export const userName = () => W?.initDataUnsafe?.user?.first_name || '';
 
 // ---------- Вибрация ----------
 export const haptic = {
-  success: () => inTelegram && atLeast('6.1') && safe(() => W.HapticFeedback.notificationOccurred('success')),
-  warning: () => inTelegram && atLeast('6.1') && safe(() => W.HapticFeedback.notificationOccurred('warning')),
-  error: () => inTelegram && atLeast('6.1') && safe(() => W.HapticFeedback.notificationOccurred('error')),
-  tap: () => inTelegram && atLeast('6.1') && safe(() => W.HapticFeedback.impactOccurred('light')),
-  select: () => inTelegram && atLeast('6.1') && safe(() => W.HapticFeedback.selectionChanged()),
+  success: () => env.inTelegram && atLeast('6.1') && safe(() => W.HapticFeedback.notificationOccurred('success')),
+  warning: () => env.inTelegram && atLeast('6.1') && safe(() => W.HapticFeedback.notificationOccurred('warning')),
+  error: () => env.inTelegram && atLeast('6.1') && safe(() => W.HapticFeedback.notificationOccurred('error')),
+  tap: () => env.inTelegram && atLeast('6.1') && safe(() => W.HapticFeedback.impactOccurred('light')),
+  select: () => env.inTelegram && atLeast('6.1') && safe(() => W.HapticFeedback.selectionChanged()),
 };
 
 // ---------- Кнопка «Назад» ----------
@@ -62,12 +77,12 @@ const mockBack = () => document.getElementById('mock-back');
 export const backButton = {
   show(handler) {
     backHandler = handler;
-    if (inTelegram && atLeast('6.1')) safe(() => W.BackButton.show());
+    if (env.inTelegram && atLeast('6.1')) safe(() => W.BackButton.show());
     else if (mockBack()) mockBack().hidden = false;
   },
   hide() {
     backHandler = null;
-    if (inTelegram && atLeast('6.1')) safe(() => W.BackButton.hide());
+    if (env.inTelegram && atLeast('6.1')) safe(() => W.BackButton.hide());
     else if (mockBack()) mockBack().hidden = true;
   },
 };
@@ -79,7 +94,7 @@ const mockMain = () => document.getElementById('mock-main');
 export const mainButton = {
   set({ text, onClick, enabled = true }) {
     mainHandler = onClick;
-    if (inTelegram) {
+    if (env.inTelegram) {
       safe(() => W.MainButton.setParams({ text, color: COLORS.accent, text_color: '#ffffff', is_active: enabled, is_visible: true }));
     } else if (mockMain()) {
       const b = mockMain();
@@ -90,12 +105,12 @@ export const mainButton = {
     document.documentElement.classList.add('has-main');
   },
   progress(on) {
-    if (inTelegram) safe(() => (on ? W.MainButton.showProgress(false) : W.MainButton.hideProgress()));
+    if (env.inTelegram) safe(() => (on ? W.MainButton.showProgress(false) : W.MainButton.hideProgress()));
     else if (mockMain()) mockMain().classList.toggle('loading', on);
   },
   hide() {
     mainHandler = null;
-    if (inTelegram) safe(() => W.MainButton.hide());
+    if (env.inTelegram) safe(() => W.MainButton.hide());
     else if (mockMain()) mockMain().hidden = true;
     document.documentElement.classList.remove('has-main');
   },
@@ -104,7 +119,7 @@ export const mainButton = {
 export function bindNativeButtons() {
   const onBack = () => backHandler && backHandler();
   const onMain = () => mainHandler && mainHandler();
-  if (inTelegram) {
+  if (env.inTelegram) {
     safe(() => W.BackButton.onClick(onBack));
     safe(() => W.MainButton.onClick(onMain));
   }
@@ -114,7 +129,7 @@ export function bindNativeButtons() {
 
 // ---------- Системные диалоги ----------
 export function nativeConfirm(message) {
-  if (inTelegram && atLeast('6.2')) {
+  if (env.inTelegram && atLeast('6.2')) {
     return new Promise((resolve) => {
       try {
         W.showConfirm(message, (ok) => resolve(!!ok));
@@ -127,6 +142,6 @@ export function nativeConfirm(message) {
 }
 
 export function openTelegramLink(url) {
-  if (inTelegram) safe(() => W.openTelegramLink(url));
+  if (env.inTelegram) safe(() => W.openTelegramLink(url));
   else location.href = url;
 }
